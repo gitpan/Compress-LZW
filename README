@@ -1,0 +1,59 @@
+NAME
+    Compress::LZW -- Pure perl implementation of LZW
+
+WARNING
+    This module does not yet support compress(1)'s .Z files!! Nor is its
+    interface stable. Hence the alpha status. Expect support to come soon.
+
+WARNING
+    Read above once more :)
+
+SYNOPSIS
+      use Compress::LZW;
+  
+      my $compressed = compress($fatdata);
+      my $fatdata    = decompress($compressed);
+  
+      my $smallcompressed = compress($thindata, 12);
+      my $thindata        = decompress($smallcompressed, 12);
+  
+DESCRIPTION
+    "Compress::LZW" it a perl implementation of the newly free LZW
+    compression algorithm. It defaults to building a 16-bit codeword table,
+    but provides the ability to choose a 12-bit table also. Depending on the
+    size of your data, the 12-bit table may provide better compression.
+
+  Functions
+    "compress"
+        Takes a string as its first argument, and returns the compressed
+        result. You can also specify the size of your codeword table in
+        @_[1], choosing either 12 or 16. 16 is the default. "compress" will
+
+    "decompress"
+        Takes a string as its first argument, and returns the decompressed
+        result. You can also specify the size of your codeword table in
+        @_[1], choosing either 12 or 16. 16 is the default.
+
+EXPORTS
+    "Compress::LZW" exports: "compress" "decompress" That's all.
+
+SEE ALSO
+    Other Compress::* modules, especially Compress::LZV1, Compress::LZF and
+    Compress::Zlib.
+
+AUTHOR
+    Sean O'Rourke, <seano@cpan.org> - Original author,
+    "Compress::SelfExtracting"
+
+    Matt Howard <mhoward@hattmoward.org> - "Compress::LZW"
+
+    Bug reports welcome, patches even more welcome.
+
+COPYRIGHT
+    Copyright (C) 2003 Sean O'Rourke & Matt Howard. All rights reserved,
+    some wrongs reversed. This module is distributed under the same terms as
+    Perl itself. Let me know if you actually find it useful.
+
+    MH: Also, credit to Rocco Caputo for a 2nd implementation to study.
+    Thanks!
+

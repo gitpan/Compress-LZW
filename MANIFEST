@@ -1,0 +1,8 @@
+Changes
+LZW.pm
+MANIFEST
+Makefile.PL
+README
+lzwcompress
+lzwdecompress
+test.pl

@@ -1,10 +1,61 @@
-use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile(
-    'NAME'		=> 'Compress::LZW',
-    'VERSION_FROM'	=> 'LZW.pm', # finds $VERSION
-    'PREREQ_PM'		=> { },
-    ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
-      (AUTHOR     => "Matt Howard <mhoward@hattmoward.org>") : ()),
+
+use strict;
+use warnings;
+
+
+
+use ExtUtils::MakeMaker 6.30;
+
+
+
+my %WriteMakefileArgs = (
+  "ABSTRACT" => "Pure-Perl implementation of scaling LZW",
+  "AUTHOR" => "Meredith Howard <mhoward\@cpan.org>",
+  "BUILD_REQUIRES" => {},
+  "CONFIGURE_REQUIRES" => {
+    "ExtUtils::MakeMaker" => "6.30"
+  },
+  "DISTNAME" => "Compress-LZW",
+  "EXE_FILES" => [],
+  "LICENSE" => "perl",
+  "NAME" => "Compress::LZW",
+  "PREREQ_PM" => {
+    "Exporter" => 0,
+    "Moo" => 0,
+    "base" => 0,
+    "namespace::clean" => 0,
+    "strictures" => 0
+  },
+  "TEST_REQUIRES" => {
+    "Test::More" => 0
+  },
+  "VERSION" => "0.02",
+  "test" => {
+    "TESTS" => "t/*.t"
+  }
 );
+
+
+my %FallbackPrereqs = (
+  "Exporter" => 0,
+  "Moo" => 0,
+  "Test::More" => 0,
+  "base" => 0,
+  "namespace::clean" => 0,
+  "strictures" => 0
+);
+
+
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
+  delete $WriteMakefileArgs{TEST_REQUIRES};
+  delete $WriteMakefileArgs{BUILD_REQUIRES};
+  $WriteMakefileArgs{PREREQ_PM} = \%FallbackPrereqs;
+}
+
+delete $WriteMakefileArgs{CONFIGURE_REQUIRES}
+  unless eval { ExtUtils::MakeMaker->VERSION(6.52) };
+
+WriteMakefile(%WriteMakefileArgs);
+
+
+

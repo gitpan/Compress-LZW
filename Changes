@@ -1,7 +1,0 @@
-Revision history for Perl extension Compress::LZW.
-
-0.01  Thu June 19 01:11:32 2003
-	- original version: LZW code ripped and slightly munged 
-          from Compress::SelfExtracting
-
-

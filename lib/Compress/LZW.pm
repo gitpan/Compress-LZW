@@ -1,6 +1,6 @@
 package Compress::LZW;
 {
-  $Compress::LZW::VERSION = '0.02';
+  $Compress::LZW::VERSION = '0.03';
 }
 # ABSTRACT: Pure-Perl implementation of scaling LZW
 
@@ -19,7 +19,7 @@ BEGIN {
 
 our $MAGIC      = "\037\235";
 our $BITS_MASK  = 0x1f;
-our $BLOCK_MASK = 0X80;
+our $BLOCK_MASK = 0x80;
 our $RESET_CODE = 256;
 
 use Compress::LZW::Compressor;
@@ -64,7 +64,7 @@ Compress::LZW - Pure-Perl implementation of scaling LZW
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 

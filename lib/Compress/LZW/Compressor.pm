@@ -1,12 +1,14 @@
 package Compress::LZW::Compressor;
 {
-  $Compress::LZW::Compressor::VERSION = '0.02';
+  $Compress::LZW::Compressor::VERSION = '0.03';
 }
 # ABSTRACT: Scaling LZW compressor class
 
 
 
 use Compress::LZW qw(:const);
+
+use Types::Standard qw( Bool Int );
 
 use Moo;
 use namespace::clean;
@@ -15,24 +17,36 @@ use namespace::clean;
 has block_mode => (
   is      => 'ro',
   default => 1,
+  isa     => Bool,
 );
 
 
 has lsb_first => (
   is      => 'ro',
   default => \&Compress::LZW::_detect_lsb_first,
+  isa     => Bool,
 );
 
 
 has max_code_size => ( # max bits
   is      => 'ro',
   default => 16,
+  isa     => Type::Tiny->new(
+    parent     => Int,
+    constraint => sub { $_ >= 9 and $_ < $BITS_MASK },
+    message    => sub { "$_ isn't between 9 and $BITS_MASK" },
+  ),
 );
 
 
 has init_code_size => (
   is      => 'ro',
   default => 9,
+  isa     => Type::Tiny->new(
+    parent     => Int,
+    constraint => sub { $_ >= 9 and $_ <= $BITS_MASK },
+    message    => sub { "$_ isn't between 9 and $BITS_MASK" },
+  ),
 );
 
 has _code_size => ( # current bits
@@ -89,24 +103,22 @@ sub compress {
   
   $self->reset;
   
-  my $codes = $self->_code_table;
-
   my $seen = '';
   for ( 0 .. length($str) ){
     my $char = substr($str, $_, 1);
     
-    if ( exists $codes->{ $seen . $char } ){
+    if ( exists $self->_code_table->{ $seen . $char } ){
       $seen .= $char;
     }
     else {
-      $self->_buf_write( $codes->{ $seen } );
+      $self->_buf_write( $self->_code_table->{ $seen } );
       
       $self->_new_code( $seen . $char );
       
       $seen = $char;
     }
   }
-  $self->_buf_write( $codes->{ $seen } );  #last bit of input
+  $self->_buf_write( $self->_code_table->{ $seen } );  #last bit of input
   
   return ${ $self->_buf };
 }
@@ -133,16 +145,14 @@ sub _reset_code_table {
 sub _new_code {
   my $self = shift;
   my ( $data ) = @_;
-  
+
   my $code = $self->_next_code;
-  $self->_code_table->{ $data } = $code;
-  $self->_next_code( $code + 1 );
   
-  my $max_code = 2 ** $self->_code_size;
-  if ( $self->_next_code > $max_code ){
-    
+  if ( $code == (2 ** $self->_code_size) ){
     if ( $self->_code_size < $self->max_code_size ){
+      
       $self->_code_size($self->_code_size + 1 );
+      
     }
     elsif ( $self->block_mode ){
       # FINISHME
@@ -151,11 +161,19 @@ sub _new_code {
       # this doesn't need to be perfect, the only part that needs
       # match algorithm-wise is what code tables are built the same
       # after a reset.
-      warn "Resetting code table at $code";
+      #~ warn "Resetting code table at $code";
       $self->_reset_code_table;
       $self->_buf_write( $RESET_CODE );
     }
   }
+  
+  if ( $code >= (2 ** $self->_code_size) ){
+    return; # must not have been able to increase bits, we're capped
+  }
+
+  $self->_code_table->{ $data } = $code;
+  $self->_next_code( $code + 1 );
+  
 }
 
 sub _buf_write {
@@ -169,11 +187,11 @@ sub _buf_write {
   my $buf_size  = $self->_buf_size;
 
   if ( $code > ( 2 ** $code_size ) ){
-    die "Code value too high for current code size $code_size";
+    die "Code value $code too high for current code size $code_size";
   }
   my $wpos = $self->lsb_first ? $buf_size : ( $buf_size + $code_size - 1 );
   
-  #~ warn "write 0x" . hex( $code ) . "\tat $code_size bits\toffset $wpos (byte ".int($wpos/8) . ')';
+   #~ warn "write $code \tat $code_size bits\toffset $wpos (byte ".int($wpos/8) . ')';
   
   if ( $code == 1 ){
     vec( $$buf, $wpos, 1 ) = 1;
@@ -204,7 +222,7 @@ Compress::LZW::Compressor - Scaling LZW compressor class
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 
@@ -216,6 +234,7 @@ version 0.02
 =head1 ATTRIBUTES
 
 =head2 block_mode
+
 Default: 1
 
 Block mode is a feature added to LZW by compress(1). Once the maximum
@@ -223,27 +242,41 @@ code size has been reached, if the compression ratio falls (NYI) the
 code table and code size can be reset, and a code indicating this reset
 is embedded in the output stream.
 
+May be 0 or 1.
+
 =head2 lsb_first
-Default: Dectected through Config.pm / byteorder
+
+Default: Detected through Config.pm / byteorder
 
 True if bit 0 is the least significant in this environment. Not well-tested,
 but intended to change some internal behavior to match compress(1) output on
 MSB-zero platforms.
 
+May be 0 or 1.
+
 =head2 max_code_size
+
 Default: 16
 
 Maximum size in bits that code output may scale up to.  This value is stored
 in byte 3 of the compressed output so the decompressor can also stop at the
-same size automatically.
+same size automatically.  Maximum code size implies a maximum code table size
+of C<2 ** max_code_size>, which can be emptied and restarted mid-stream in
+L</block_mode>.
+
+May be between 9 and 31, inclusive.  The default of 16 is the largest supported
+by compress(1), but Compress::LZW can handle up to 31 bits.
 
 =head2 init_code_size
+
 Default: 9
 
 After the first three header bytes, all output codes begin at this size. This
 is not stored in the resulting stream, so if you alter this from default you
-need to supply the same value to the decompressor, and you lose compatibility
-with compress(1).
+I<must> supply the same value to the decompressor, and you lose compatibility
+with compress(1), which only allowed specifying L</max_code_size>.
+
+May be between 9 and L</max_code_size>, inclusive.
 
 =head1 METHODS
 
@@ -254,9 +287,10 @@ Compresses $input with the current settings and returns the result.
 =head2 reset ()
 
 Resets the compressor state for another round of compression. Automatically
-called at the beginning of ->compress.
+called at the beginning of compress().
 
-Resets: Code table, next code number, code size, output buffer, buffer position
+Resets the following internal state: Code table, next code number, code size,
+output buffer, buffer position
 
 =head1 AUTHOR
 

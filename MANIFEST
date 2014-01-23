@@ -1,7 +1,9 @@
+CHANGES
 LICENSE
 MANIFEST
 META.yml
 Makefile.PL
+README
 dist.ini
 lib/Compress/LZW.pm
 lib/Compress/LZW/Compressor.pm
@@ -9,3 +11,4 @@ lib/Compress/LZW/Decompressor.pm
 t/01_basic.t
 t/10_large.t
 t/20_objects.t
+t/30_options.t

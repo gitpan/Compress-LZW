@@ -1,11 +1,13 @@
 package Compress::LZW::Decompressor;
 {
-  $Compress::LZW::Decompressor::VERSION = '0.02';
+  $Compress::LZW::Decompressor::VERSION = '0.03';
 }
 # ABSTRACT: Scaling LZW decompressor class
 
 
 use Compress::LZW qw(:const);
+
+use Types::Standard qw( Bool Int );
 
 use Moo;
 use namespace::clean;
@@ -14,12 +16,18 @@ use namespace::clean;
 has lsb_first => (
   is      => 'ro',
   default => \&Compress::LZW::_detect_lsb_first,
+  isa     => Bool,
 );
 
 
 has init_code_size => (
   is      => 'ro',
   default => 9,
+  isa     => Type::Tiny->new(
+    parent => Int,
+    constraint => sub { $_ >= 9 and $_ < $BITS_MASK },
+    message    => sub { "$_ isn't between 9 and $BITS_MASK" },
+  ),
 );
 
 has _block_mode => ( # can code table reset
@@ -90,6 +98,12 @@ sub decompress {
       
       # trigger the builder
       $codes = $self->_code_table;
+      
+      my $reinit_code = $code_reader->();
+         $str .= $codes->{ $reinit_code };
+         $seen = $reinit_code;
+      
+      next;
     }
     
     if ( my $word = $codes->{ $code } ){
@@ -114,7 +128,7 @@ sub decompress {
     
     # if next code expected will require a larger bit size
     if ( $self->_next_code == (2 ** $self->_code_size) ){
-      $self->{_code_size}++;
+      $self->{_code_size}++ if $self->_code_size < $self->_max_code_size;
     }
     
   }
@@ -169,6 +183,14 @@ sub _begin_read {
   $self->_max_code_size( $bits & $BITS_MASK );
   $self->_block_mode(  ( $bits & $BLOCK_MASK ) >> 7 );
   
+  if ( $self->init_code_size > $self->_max_code_size ){
+    die
+      "Can't decompress stream with init_code_size " .
+      $self->init_code_size .
+      " > the stream's max_code_size ".
+      $self->_max_code_size;
+  }
+
   my $rpos = 8 * 3;  #reader position in bits;
   my $eof = length( $data ) * 8;
   
@@ -178,12 +200,12 @@ sub _begin_read {
     
     return undef if ( $rpos > $eof );
     
-    my $cpos = $self->lsb_first ? $rpos : ($rpos + $code_size);
+    my $cpos = $self->lsb_first ? $rpos : ($rpos + $code_size - 1);
     
     my $code = 0;
     for ( 0 .. $code_size - 1 ){
       $code |=
-        vec( $data, $cpos + ( $self->lsb_first ? $_ : 0 - $_ ), 1) << $_;
+        vec( $data, $cpos + ( $self->lsb_first ? $_ : (0 - $_) ), 1) << $_;
     }
     
     $rpos += $code_size;
@@ -210,7 +232,7 @@ Compress::LZW::Decompressor - Scaling LZW decompressor class
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 
@@ -222,20 +244,27 @@ version 0.02
 =head1 ATTRIBUTES
 
 =head2 lsb_first
+
 Default: Dectected through Config.pm / byteorder
 
 True if bit 0 is the least significant in this environment. Not well-tested,
 but intended to change some internal behavior to match compress(1) output on
 MSB-zero platforms.
 
-Needs to match the value used during compression.
+Needs to match the value used during compression, if data is passing across
+CPU architectures.
 
 =head2 init_code_size
+
 Default: 9
 
 After the first three header bytes, input codes are expected tobegin at this
 size. This is not stored in the resulting stream, so if this was altered from
-default at compression, you need to supply the same value here.
+default at compression, you I<must> supply the same value here.
+
+May be between 9 and 31, inclusive.  An exception will be raised in decompress
+if this value is already higher than the given stream's declared maximum code
+size.
 
 =head1 METHODS
 
@@ -248,7 +277,8 @@ Decompress $input with the current settings and returns the result.
 Resets the decompressor state for another round of input. Automatically
 called at the beginning of ->decompress.
 
-Resets: code table, next code number, code size, output buffer
+Resets the following internal state: code table, next code number, code
+size, output buffer
 
 =head1 AUTHOR
 

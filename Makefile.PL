@@ -22,6 +22,7 @@ my %WriteMakefileArgs = (
   "PREREQ_PM" => {
     "Exporter" => 0,
     "Moo" => 0,
+    "Types::Standard" => 0,
     "base" => 0,
     "namespace::clean" => 0,
     "strictures" => 0
@@ -29,7 +30,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "0.02",
+  "VERSION" => "0.03",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -40,6 +41,7 @@ my %FallbackPrereqs = (
   "Exporter" => 0,
   "Moo" => 0,
   "Test::More" => 0,
+  "Types::Standard" => 0,
   "base" => 0,
   "namespace::clean" => 0,
   "strictures" => 0

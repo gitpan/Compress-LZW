@@ -16,10 +16,11 @@ name: Compress-LZW
 requires:
   Exporter: 0
   Moo: 0
+  Types::Standard: 0
   base: 0
   namespace::clean: 0
   strictures: 0
 resources:
   bugtracker: https://github.com/merrilymeredith/p5-Compress-LZW/issues
   repository: git://github.com/merrilymeredith/p5-Compress-LZW.git
-version: 0.02
+version: 0.03
